@@ -1,0 +1,9 @@
+# Spring Datasource
+spring:
+  datasource:
+    url: jdbc:hsqldb:mem:.
+    username: sa
+    password:
+    driverClassName: org.hsqldb.jdbc.JDBCDriver
+  jpa:
+    open-in-view: false
