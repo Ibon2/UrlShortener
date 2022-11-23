@@ -5,6 +5,7 @@ import es.unizar.urlshortener.core.ShortUrlProperties
 import es.unizar.urlshortener.core.usecases.CreateShortUrlUseCase
 import es.unizar.urlshortener.core.usecases.LogClickUseCase
 import es.unizar.urlshortener.core.usecases.RedirectUseCase
+import org.springframework.hateoas.mediatype.html.HtmlInputType.URL
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -14,8 +15,11 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RestController
+import java.net.HttpURLConnection
 import java.net.URI
+import java.net.URL
 import javax.servlet.http.HttpServletRequest
+
 
 /**
  * The specification of the controller.
@@ -66,7 +70,6 @@ class UrlShortenerControllerImpl(
     val logClickUseCase: LogClickUseCase,
     val createShortUrlUseCase: CreateShortUrlUseCase
 ) : UrlShortenerController {
-
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
         redirectUseCase.redirectTo(id).let {
@@ -86,6 +89,14 @@ class UrlShortenerControllerImpl(
             )
         ).let {
             val h = HttpHeaders()
+            val urlCheck = URL(data.url)
+            val connection:HttpURLConnection = urlCheck.openConnection() as HttpURLConnection
+            val status = connection.getResponseCode()
+            if(status.equals(200)){
+                println("Es buenoo")
+            }else{
+                println("El codigo no deveulve bien :"+status)
+            }
             val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
             h.location = url
             val response = ShortUrlDataOut(
