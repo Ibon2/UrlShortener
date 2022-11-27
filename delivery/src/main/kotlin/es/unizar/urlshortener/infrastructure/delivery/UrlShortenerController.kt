@@ -2,10 +2,7 @@ package es.unizar.urlshortener.infrastructure.delivery
 
 import es.unizar.urlshortener.core.ClickProperties
 import es.unizar.urlshortener.core.ShortUrlProperties
-import es.unizar.urlshortener.core.usecases.CreateShortUrlUseCase
-import es.unizar.urlshortener.core.usecases.LogClickUseCase
-import es.unizar.urlshortener.core.usecases.RedirectUseCase
-import org.springframework.hateoas.mediatype.html.HtmlInputType.URL
+import es.unizar.urlshortener.core.usecases.*
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -40,6 +37,7 @@ interface UrlShortenerController {
      */
     fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut>
 
+    fun metrics(): ResponseEntity<InfoMetricsResponse>
 }
 
 /**
@@ -47,7 +45,7 @@ interface UrlShortenerController {
  */
 data class ShortUrlDataIn(
     val url: String,
-    val sponsor: String? = null
+    val sponsor: String? = null,
 )
 
 /**
@@ -55,9 +53,23 @@ data class ShortUrlDataIn(
  */
 data class ShortUrlDataOut(
     val url: URI? = null,
-    val properties: Map<String, Any> = emptyMap()
+    val properties: Map<String, Any> = emptyMap(),
+    val list: Map<String, String>? = null
 )
 
+/**
+ * Data metrics of the url.
+ */
+data class InfoMetricsResponse(
+    val listMetrics: Map<String, String> = emptyMap()
+)
+
+/**
+ * Data metrics of the url.
+ */
+data class DataMetrics(
+    val properties: Map<String, Any> = emptyMap()
+)
 
 /**
  * The implementation of the controller.
@@ -68,7 +80,8 @@ data class ShortUrlDataOut(
 class UrlShortenerControllerImpl(
     val redirectUseCase: RedirectUseCase,
     val logClickUseCase: LogClickUseCase,
-    val createShortUrlUseCase: CreateShortUrlUseCase
+    val createShortUrlUseCase: CreateShortUrlUseCase,
+    val dataMetricsUseCase: DataMetricsUseCase
 ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
@@ -99,12 +112,30 @@ class UrlShortenerControllerImpl(
             }
             val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
             h.location = url
+            h.contentType = MediaType.APPLICATION_JSON
             val response = ShortUrlDataOut(
                 url = url,
                 properties = mapOf(
                     "safe" to it.properties.safe
-                )
+                ),
+                list = metrics().body?.listMetrics
             )
             ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
+        }
+    @GetMapping("/api/metrics")
+    override fun metrics(): ResponseEntity<InfoMetricsResponse> =
+        dataMetricsUseCase.info()
+        .let {
+            val h = HttpHeaders()
+            h.contentType = MediaType.APPLICATION_JSON
+            val response = InfoMetricsResponse(
+                listMetrics = mapOf(
+                    "uno" to it.uno,
+                    "dos" to it.dos,
+                    "tres" to it.tres,
+                    "cuatro" to it.cuatro
+                )
+            )
+            ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
         }
 }
