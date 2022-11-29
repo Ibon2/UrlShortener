@@ -3,6 +3,9 @@ package es.unizar.urlshortener.infrastructure.delivery
 import es.unizar.urlshortener.core.ClickProperties
 import es.unizar.urlshortener.core.ShortUrlProperties
 import es.unizar.urlshortener.core.usecases.*
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import net.minidev.json.JSONObject
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -15,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import javax.servlet.http.HttpServletRequest
 
 
@@ -38,6 +44,8 @@ interface UrlShortenerController {
     fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut>
 
     fun metrics(): ResponseEntity<InfoMetricsResponse>
+
+    fun urlTotal(): ResponseEntity<URLTotal>
 }
 
 /**
@@ -54,21 +62,20 @@ data class ShortUrlDataIn(
 data class ShortUrlDataOut(
     val url: URI? = null,
     val properties: Map<String, Any> = emptyMap(),
-    val list: Map<String, String>? = null
 )
 
 /**
  * Data metrics of the url.
  */
 data class InfoMetricsResponse(
-    val listMetrics: Map<String, String> = emptyMap()
+    val list: Map<String, String>? = null
 )
 
 /**
  * Data metrics of the url.
  */
-data class DataMetrics(
-    val properties: Map<String, Any> = emptyMap()
+data class URLTotal(
+    val total: Map<String, String>? = null
 )
 
 /**
@@ -81,7 +88,11 @@ class UrlShortenerControllerImpl(
     val redirectUseCase: RedirectUseCase,
     val logClickUseCase: LogClickUseCase,
     val createShortUrlUseCase: CreateShortUrlUseCase,
-    val dataMetricsUseCase: DataMetricsUseCase
+    val dataMetricsUseCase: DataMetricsUseCase,
+    var registry: MeterRegistry,
+    var urlCounter: Counter = Counter.builder("URL.shortened")
+                                .description("URLs shortened")
+                                .register(registry)
 ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
@@ -107,18 +118,18 @@ class UrlShortenerControllerImpl(
             val status = connection.getResponseCode()
             if(status.equals(200)){
                 println("Es buenoo")
+                urlCounter.increment()
             }else{
                 println("El codigo no deveulve bien :"+status)
             }
             val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
             h.location = url
-            h.contentType = MediaType.APPLICATION_JSON
+            //h.contentType = MediaType.APPLICATION_JSON
             val response = ShortUrlDataOut(
                 url = url,
                 properties = mapOf(
                     "safe" to it.properties.safe
-                ),
-                list = metrics().body?.listMetrics
+                )
             )
             ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
         }
@@ -129,7 +140,7 @@ class UrlShortenerControllerImpl(
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val response = InfoMetricsResponse(
-                listMetrics = mapOf(
+                list = mapOf(
                     "uno" to it.uno,
                     "dos" to it.dos,
                     "tres" to it.tres,
@@ -137,5 +148,24 @@ class UrlShortenerControllerImpl(
                 )
             )
             ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
+        }
+    @GetMapping("/api/metrics/URL")
+    override fun urlTotal(): ResponseEntity<URLTotal> =
+        let {
+            val h = HttpHeaders()
+            h.contentType = MediaType.APPLICATION_JSON
+            val client = HttpClient.newBuilder().build();
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/actuator/prometheus?includedNames=URL_shortened_total"))
+                .build();
+            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
+            val totalParse = total.body().split("\\s+".toRegex()).toTypedArray()
+            println(totalParse)
+            val response = URLTotal(
+                mapOf(
+                    "urlShortenedTotal" to totalParse[10],
+                )
+            )
+            ResponseEntity<URLTotal>(response, h, HttpStatus.OK)
         }
 }

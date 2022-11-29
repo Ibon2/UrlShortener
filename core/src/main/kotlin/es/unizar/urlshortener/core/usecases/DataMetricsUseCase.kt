@@ -27,7 +27,7 @@ class DataMetricsUseCaseImpl()
     : DataMetricsUseCase {
         override fun create(): InfoMetrics =
             InfoMetrics(
-                uno = "info metrica 1",
+                uno = "nº URLS recortadas",
                 dos = "info metrica 2",
                 tres = "info metrica 3",
                 cuatro = "info metrica 4"

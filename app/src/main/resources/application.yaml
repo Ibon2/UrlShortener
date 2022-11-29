@@ -7,3 +7,14 @@ spring:
     driverClassName: org.hsqldb.jdbc.JDBCDriver
   jpa:
     open-in-view: false
+
+  # Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "prometheus"
+        exclude: "env,beans"
+  endpoint:
+    prometheus:
+      enabled: true

@@ -40,7 +40,7 @@ subprojects {
     }
 }
 
-project(":core") { }
+project(":core") {}
 
 project(":repositories") {
     apply(plugin = "org.springframework.boot")
@@ -69,6 +69,10 @@ project(":delivery") {
 
         "testImplementation"("org.springframework.boot:spring-boot-starter-test")
         "testImplementation"("org.mockito.kotlin:mockito-kotlin:$mockitoVersion")
+
+        "implementation"("org.springframework.boot:spring-boot-starter-actuator")
+        "implementation"("io.micrometer:micrometer-core:1.10.2")
+        "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
     }
     tasks.getByName<BootJar>("bootJar") {
         enabled = false
@@ -95,5 +99,6 @@ project(":app") {
         "testImplementation"("org.mockito.kotlin:mockito-kotlin:$mockitoVersion")
         "testImplementation"("com.fasterxml.jackson.module:jackson-module-kotlin")
         "testImplementation"("org.apache.httpcomponents:httpclient")
+
     }
 }
