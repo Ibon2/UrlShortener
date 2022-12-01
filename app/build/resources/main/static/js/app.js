@@ -23,7 +23,7 @@ $(document).ready(
                 success: function (msg, status, request) {
                     $("#URLtotal").html(
                         "<div class='alert alert-success lead'><a target='_blank' >"
-                        + msg.total.urlShortenedTotal + "</div>"
+                        + msg.metric.measurement + "</div>"
                     );
                 },
                 error: function () {
@@ -41,7 +41,7 @@ $(document).ready(
                 success: function (msg, status, request) {
                     $("#CPUusage").html(
                         "<div class='alert alert-success lead'><a target='_blank' >"
-                        + msg.total.CPUUsage + "</div>"
+                        + msg.metric.measurement + "</div>"
                     );
                 },
                 error: function () {
@@ -59,7 +59,7 @@ $(document).ready(
                 success: function (msg, status, request) {
                     $("#Uptime").html(
                         "<div class='alert alert-success lead'><a target='_blank' >"
-                        + msg.total.uptime + "</div>"
+                        + msg.metric.measurement + "</div>"
                     );
                 },
                 error: function () {

@@ -1,5 +1,6 @@
 package es.unizar.urlshortener.infrastructure.delivery
 
+import com.jayway.jsonpath.JsonPath
 import es.unizar.urlshortener.core.ClickProperties
 import es.unizar.urlshortener.core.ShortUrlProperties
 import es.unizar.urlshortener.core.usecases.*
@@ -77,7 +78,7 @@ data class InfoMetricsResponse(
  * Data metrics of the url.
  */
 data class JSONMetricResponse(
-    val total: Map<String, String>? = null
+    val metric: Map<String, String>? = null
 )
 
 /**
@@ -165,10 +166,16 @@ class UrlShortenerControllerImpl(
                 .uri(URI.create("http://localhost:8080/actuator/metrics/URL.shortened"))
                 .build();
             val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-            val totalParse = total.body().replace('\\',' ')
+
+            val context = JsonPath.parse(total.body())
+            val name: String = context.read("name")
+            val description: String = context.read("description")
+            val measurement: String = context.read<Double>("measurements[0].value").toString()
             val response = JSONMetricResponse(
                 mapOf(
-                    "urlShortenedTotal" to totalParse
+                    "name" to name,
+                    "description" to description,
+                    "measurement" to measurement
                 )
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
@@ -183,10 +190,16 @@ class UrlShortenerControllerImpl(
                 .uri(URI.create("http://localhost:8080/actuator/metrics/process.cpu.usage"))
                 .build();
             val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-            val totalParse = total.body().replace('\\',' ')
+
+            val context = JsonPath.parse(total.body())
+            val name: String = context.read("name")
+            val description: String = context.read("description")
+            val measurement: String = context.read<Double>("measurements[0].value").toString()
             val response = JSONMetricResponse(
                 mapOf(
-                    "CPUUsage" to totalParse // Formato: "{\"name\":\"process.uptime\",\"description\":\"The uptime of the Java virtual machine\",\"baseUnit\":\"seconds\",\"measurements\":[{\"statistic\":\"VALUE\",\"value\":107.651}],\"availableTags\":[]}"
+                    "name" to name,
+                    "description" to description,
+                    "measurement" to measurement
                 )
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
@@ -202,10 +215,18 @@ class UrlShortenerControllerImpl(
                 .uri(URI.create("http://localhost:8080/actuator/metrics/process.uptime"))
                 .build();
             val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-            val totalParse = total.body().replace('\\',' ')
+
+            val context = JsonPath.parse(total.body())
+            val name: String = context.read("name")
+            val description: String = context.read("description")
+            val measurement: String = context.read<Double>("measurements[0].value").toString()
+            val format: String = context.read("baseUnit")
             val response = JSONMetricResponse(
                 mapOf(
-                    "uptime" to totalParse
+                    "name" to name,
+                    "description" to description,
+                    "measurement" to measurement,
+                    "format" to format
                 )
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
