@@ -13,8 +13,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: "prometheus"
+        include: "prometheus, metrics"
         exclude: "env,beans"
   endpoint:
     prometheus:
+      enabled: true
+    metrics:
       enabled: true

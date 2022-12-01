@@ -45,7 +45,9 @@ interface UrlShortenerController {
 
     fun metrics(): ResponseEntity<InfoMetricsResponse>
 
-    fun urlTotal(): ResponseEntity<URLTotal>
+    fun urlTotal(): ResponseEntity<JSONMetricResponse>
+    fun cpuUsage(): ResponseEntity<JSONMetricResponse>
+    fun uptime(): ResponseEntity<JSONMetricResponse>
 }
 
 /**
@@ -74,7 +76,7 @@ data class InfoMetricsResponse(
 /**
  * Data metrics of the url.
  */
-data class URLTotal(
+data class JSONMetricResponse(
     val total: Map<String, String>? = null
 )
 
@@ -88,7 +90,6 @@ class UrlShortenerControllerImpl(
     val redirectUseCase: RedirectUseCase,
     val logClickUseCase: LogClickUseCase,
     val createShortUrlUseCase: CreateShortUrlUseCase,
-    val dataMetricsUseCase: DataMetricsUseCase,
     var registry: MeterRegistry,
     var urlCounter: Counter = Counter.builder("URL.shortened")
                                 .description("URLs shortened")
@@ -135,37 +136,73 @@ class UrlShortenerControllerImpl(
         }
     @GetMapping("/api/metrics")
     override fun metrics(): ResponseEntity<InfoMetricsResponse> =
-        dataMetricsUseCase.info()
-        .let {
+        let {
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val response = InfoMetricsResponse(
                 list = mapOf(
-                    "uno" to it.uno,
-                    "dos" to it.dos,
-                    "tres" to it.tres,
-                    "cuatro" to it.cuatro
+                    "recortadas" to "Nº URLS recortadas",
+                    "cpu" to "Uso de la CPU",
+                    "time" to "Tiempo total de la maquina",
+                    "cuatro" to "info metrica 4"
                 )
             )
             ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
         }
     @GetMapping("/api/metrics/URL")
-    override fun urlTotal(): ResponseEntity<URLTotal> =
+    override fun urlTotal(): ResponseEntity<JSONMetricResponse> =
         let {
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val client = HttpClient.newBuilder().build();
             val request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/actuator/prometheus?includedNames=URL_shortened_total"))
+                .uri(URI.create("http://localhost:8080/actuator/metrics/URL.shortened"))
                 .build();
             val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-            val totalParse = total.body().split("\\s+".toRegex()).toTypedArray()
-            println(totalParse)
-            val response = URLTotal(
+            val totalParse = total.body().replace('\\',' ')
+            val response = JSONMetricResponse(
                 mapOf(
-                    "urlShortenedTotal" to totalParse[10],
+                    "urlShortenedTotal" to totalParse
                 )
             )
-            ResponseEntity<URLTotal>(response, h, HttpStatus.OK)
+            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
+    @GetMapping("/api/metrics/CPU")
+    override fun cpuUsage(): ResponseEntity<JSONMetricResponse> =
+        let {
+            val h = HttpHeaders()
+            h.contentType = MediaType.APPLICATION_JSON
+            val client = HttpClient.newBuilder().build();
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/actuator/metrics/process.cpu.usage"))
+                .build();
+            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
+            val totalParse = total.body().replace('\\',' ')
+            val response = JSONMetricResponse(
+                mapOf(
+                    "CPUUsage" to totalParse // Formato: "{\"name\":\"process.uptime\",\"description\":\"The uptime of the Java virtual machine\",\"baseUnit\":\"seconds\",\"measurements\":[{\"statistic\":\"VALUE\",\"value\":107.651}],\"availableTags\":[]}"
+                )
+            )
+            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+        }
+
+    @GetMapping("/api/metrics/uptime")
+    override fun uptime(): ResponseEntity<JSONMetricResponse> =
+        let {
+            val h = HttpHeaders()
+            h.contentType = MediaType.APPLICATION_JSON
+            val client = HttpClient.newBuilder().build();
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("http://localhost:8080/actuator/metrics/process.uptime"))
+                .build();
+            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
+            val totalParse = total.body().replace('\\',' ')
+            val response = JSONMetricResponse(
+                mapOf(
+                    "uptime" to totalParse
+                )
+            )
+            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+        }
+
 }
