@@ -12,6 +12,7 @@ spring:
 management:
   endpoints:
     web:
+      # base-path: "/api"
       exposure:
         include: "prometheus, metrics"
         exclude: "env,beans"

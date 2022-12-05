@@ -40,7 +40,15 @@ subprojects {
     }
 }
 
-project(":core") {}
+project(":core") {
+    apply(plugin = "org.springframework.boot")
+    apply(plugin = "io.spring.dependency-management")
+    apply(plugin = "org.jetbrains.kotlin.plugin.jpa")
+    dependencies {
+        "implementation"("org.springframework.boot:spring-boot-starter-web")
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    }
+}
 
 project(":repositories") {
     apply(plugin = "org.springframework.boot")
@@ -100,5 +108,8 @@ project(":app") {
         "testImplementation"("com.fasterxml.jackson.module:jackson-module-kotlin")
         "testImplementation"("org.apache.httpcomponents:httpclient")
 
+        "implementation"("org.springframework.boot:spring-boot-starter-actuator")
+        "implementation"("io.micrometer:micrometer-core:1.10.2")
+        "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
     }
 }
