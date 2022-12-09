@@ -18,7 +18,7 @@ $(document).ready(
         function urlMetric(){
             $.ajax({
                 type: "GET",
-                url: "/api/metrics/url",
+                url: "/api/metrics/URL",
                 data: $(this).serialize(),
                 success: function (msg, status, request) {
                     $("#URLtotal").html(
@@ -36,7 +36,7 @@ $(document).ready(
         function cpuMetric(){
             $.ajax({
                 type: "GET",
-                url: "/api/metrics/cpu",
+                url: "/api/metrics/CPU",
                 data: $(this).serialize(),
                 success: function (msg, status, request) {
                     $("#CPUusage").html(
@@ -83,14 +83,11 @@ $(document).ready(
                             + "'>"
                             + request.getResponseHeader('Location')
                             + "</a></div>"
-                        );
+                    );
                     },
-                    error: function (msg, status, request) {
+                    error: function () {
                         $("#result").html(
-                            "<div>"
-                            + msg.properties.error
-                            + "</div>"
-                        );
+                            "<div class='alert alert-danger lead'>ERROR</div>");
                     }
                 });
             }

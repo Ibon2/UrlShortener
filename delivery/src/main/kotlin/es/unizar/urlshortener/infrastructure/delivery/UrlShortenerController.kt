@@ -2,21 +2,23 @@ package es.unizar.urlshortener.infrastructure.delivery
 
 import com.jayway.jsonpath.JsonPath
 import es.unizar.urlshortener.core.ClickProperties
-import es.unizar.urlshortener.core.InvalidUrlException
 import es.unizar.urlshortener.core.ShortUrlProperties
-import es.unizar.urlshortener.core.UrlNotReachable
 import es.unizar.urlshortener.core.usecases.*
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
+import net.minidev.json.JSONObject
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
-import org.springframework.web.multipart.MultipartFile
-import java.io.File
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RestController
+import java.net.HttpURLConnection
 import java.net.URI
+import java.net.URL
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -41,8 +43,9 @@ interface UrlShortenerController {
      * **Note**: Delivery of use case [CreateShortUrlUseCase].
      */
     fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut>
-    fun csvList(file: MultipartFile, request: HttpServletRequest): ResponseEntity<InfoMetricsResponse>
+
     fun metrics(): ResponseEntity<InfoMetricsResponse>
+
     fun urlTotal(): ResponseEntity<JSONMetricResponse>
     fun cpuUsage(): ResponseEntity<JSONMetricResponse>
     fun uptime(): ResponseEntity<JSONMetricResponse>
@@ -88,9 +91,8 @@ class UrlShortenerControllerImpl(
     val redirectUseCase: RedirectUseCase,
     val logClickUseCase: LogClickUseCase,
     val createShortUrlUseCase: CreateShortUrlUseCase,
-    val createShortCsvUseCase: CreateShortCsvUseCase,
-    val registry: MeterRegistry,
-    val urlCounter: Counter = Counter.builder("url")
+    var registry: MeterRegistry,
+    var urlCounter: Counter = Counter.builder("URL.shortened")
                                 .description("URLs shortened")
                                 .register(registry)
 ) : UrlShortenerController {
@@ -111,72 +113,33 @@ class UrlShortenerControllerImpl(
 
     @PostMapping("/api/link", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     override fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut> =
-        try {
-            createShortUrlUseCase.create(
-                url = data.url,
-                data = ShortUrlProperties(
-                    ip = request.remoteAddr,
-                    sponsor = data.sponsor
-                )
-            ).let {
-                val h = HttpHeaders()
-                val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
-                urlCounter.increment()
-                h.location = url
-                h.contentType = MediaType.APPLICATION_JSON
-                val response = ShortUrlDataOut(
-                    url = url,
-                    properties = mapOf(
-                        "safe" to it.properties.safe
-                    )
-                )
-                ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
-            }
-        } catch(e: InvalidUrlException){
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = ShortUrlDataOut(
-                properties = mapOf(
-                    "error" to e.message.toString()
-                )
+        createShortUrlUseCase.create(
+            url = data.url,
+            data = ShortUrlProperties(
+                ip = request.remoteAddr,
+                sponsor = data.sponsor
             )
-            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
-        } catch(e: UrlNotReachable){
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = ShortUrlDataOut(
-                properties = mapOf(
-                    "error" to e.message.toString()
-                )
-            )
-            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
-        }
-    @PostMapping("/api/bulk", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE], produces=["text/csv"])
-    override fun csvList(@RequestParam("file") file: MultipartFile, request: HttpServletRequest): ResponseEntity<InfoMetricsResponse> =
-        createShortCsvUseCase.create(
-            file = file,
-            request = request
         ).let {
-            var num = 0
-            val fileName = file.originalFilename?.substring(0, file.originalFilename!!.lastIndexOf("."))
-            var newFile = File( fileName + "_shorted.csv")
-            while(newFile.exists()){
-                newFile = File(fileName + "_shorted_($num).csv")
-                num++
-            }
-            it.forEach{
-                if (it.value.length <= 8) {
-                    val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.value, request) }.toUri()
-                    newFile.appendText(it.key + ";" + url + "\n")
-                }
-                else {
-                    newFile.appendText(it.key + ";" + it.value + "\n")
-                }
-            }
             val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = InfoMetricsResponse()
-            ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.CREATED)
+            val urlCheck = URL(data.url)
+            val connection:HttpURLConnection = urlCheck.openConnection() as HttpURLConnection
+            val status = connection.getResponseCode()
+            if(status.equals(200)){
+                println("Es buenoo")
+                urlCounter.increment()
+            }else{
+                println("El codigo no deveulve bien :"+status)
+            }
+            val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
+            h.location = url
+            //h.contentType = MediaType.APPLICATION_JSON
+            val response = ShortUrlDataOut(
+                url = url,
+                properties = mapOf(
+                    "safe" to it.properties.safe
+                )
+            )
+            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
         }
     @GetMapping("/api/metrics")
     override fun metrics(): ResponseEntity<InfoMetricsResponse> =
@@ -193,14 +156,14 @@ class UrlShortenerControllerImpl(
             )
             ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
         }
-    @GetMapping("/api/metrics/url")
+    @GetMapping("/api/metrics/URL")
     override fun urlTotal(): ResponseEntity<JSONMetricResponse> =
         let {
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val client = HttpClient.newBuilder().build();
             val request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/actuator/metrics/url"))
+                .uri(URI.create("http://localhost:8080/actuator/metrics/URL.shortened"))
                 .build();
             val total = client.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -217,7 +180,7 @@ class UrlShortenerControllerImpl(
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
-    @GetMapping("/api/metrics/cpu")
+    @GetMapping("/api/metrics/CPU")
     override fun cpuUsage(): ResponseEntity<JSONMetricResponse> =
         let {
             val h = HttpHeaders()

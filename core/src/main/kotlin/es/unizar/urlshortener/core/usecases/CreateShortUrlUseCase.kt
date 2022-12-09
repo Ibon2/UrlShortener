@@ -18,26 +18,21 @@ interface CreateShortUrlUseCase {
 class CreateShortUrlUseCaseImpl(
     private val shortUrlRepository: ShortUrlRepositoryService,
     private val validatorService: ValidatorService,
-    private val hashService: HashService,
-    private val reachableUrlUseCase: ReachableUrlUseCase
+    private val hashService: HashService
 ) : CreateShortUrlUseCase {
     override fun create(url: String, data: ShortUrlProperties): ShortUrl =
         if (validatorService.isValid(url)) {
-            reachableUrlUseCase.isReachable(
-                url
-            ).let {
-                val id: String = hashService.hasUrl(url)
-                val su = ShortUrl(
-                    hash = id,
-                    redirection = Redirection(target = url),
-                    properties = ShortUrlProperties(
-                        safe = data.safe,
-                        ip = data.ip,
-                        sponsor = data.sponsor
-                    )
+            val id: String = hashService.hasUrl(url)
+            val su = ShortUrl(
+                hash = id,
+                redirection = Redirection(target = url),
+                properties = ShortUrlProperties(
+                    safe = data.safe,
+                    ip = data.ip,
+                    sponsor = data.sponsor
                 )
-                shortUrlRepository.save(su)
-            }
+            )
+            shortUrlRepository.save(su)
         } else {
             throw InvalidUrlException(url)
         }
