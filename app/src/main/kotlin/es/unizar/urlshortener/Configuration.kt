@@ -2,6 +2,7 @@ package es.unizar.urlshortener
 
 import es.unizar.urlshortener.core.usecases.CreateShortUrlUseCaseImpl
 import es.unizar.urlshortener.core.usecases.LogClickUseCaseImpl
+import es.unizar.urlshortener.core.usecases.ReachableUrlUseCaseImpl
 import es.unizar.urlshortener.core.usecases.RedirectUseCaseImpl
 import es.unizar.urlshortener.infrastructure.delivery.HashServiceImpl
 import es.unizar.urlshortener.infrastructure.delivery.ValidatorServiceImpl
@@ -40,8 +41,10 @@ class ApplicationConfiguration(
 
     @Bean
     fun logClickUseCase() = LogClickUseCaseImpl(clickRepositoryService())
-
     @Bean
     fun createShortUrlUseCase() =
-        CreateShortUrlUseCaseImpl(shortUrlRepositoryService(), validatorService(), hashService())
+        CreateShortUrlUseCaseImpl(shortUrlRepositoryService(), validatorService(), hashService(),reachableUrlUseCase())
+    @Bean
+    fun reachableUrlUseCase() =
+        ReachableUrlUseCaseImpl()
 }
