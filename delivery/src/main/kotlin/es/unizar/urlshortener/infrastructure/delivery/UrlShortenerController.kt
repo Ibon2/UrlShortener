@@ -1,5 +1,8 @@
 package es.unizar.urlshortener.infrastructure.delivery
 
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.client.j2se.MatrixToImageWriter
+import com.google.zxing.qrcode.QRCodeWriter
 import com.jayway.jsonpath.JsonPath
 import es.unizar.urlshortener.core.ClickProperties
 import es.unizar.urlshortener.core.InvalidUrlException
@@ -15,13 +18,15 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import javax.imageio.ImageIO
 import javax.servlet.http.HttpServletRequest
-
 
 /**
  * The specification of the controller.
@@ -45,6 +50,7 @@ interface UrlShortenerController {
     fun urlTotal(): ResponseEntity<JSONMetricResponse>
     fun cpuUsage(): ResponseEntity<JSONMetricResponse>
     fun uptime(): ResponseEntity<JSONMetricResponse>
+    fun qrcode(@RequestParam url: String): ResponseEntity<ByteArray>
 }
 
 /**
@@ -239,5 +245,25 @@ class UrlShortenerControllerImpl(
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
+    @GetMapping("/qrcode")
+    override fun qrcode(@RequestParam url: String): ResponseEntity<ByteArray> {
 
+        val qrCodeWriter = QRCodeWriter()
+
+        // Generate the QR code
+        val qrCode = qrCodeWriter.encode(url, BarcodeFormat.QR_CODE, 200, 200)
+
+        // Save the QR code as an image file
+        val image = MatrixToImageWriter.toBufferedImage(qrCode)
+        val outputStream = ByteArrayOutputStream()
+        ImageIO.write(image, "PNG", outputStream)
+        val imageBytes = outputStream.toByteArray()
+
+        // Set the headers for the response
+        val headers = HttpHeaders()
+        headers.contentType = MediaType.IMAGE_PNG
+
+        // Return the QR code image in the response
+        return ResponseEntity(imageBytes, headers, HttpStatus.OK)
+    }
 }
