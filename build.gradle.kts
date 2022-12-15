@@ -40,7 +40,13 @@ subprojects {
     }
 }
 
-project(":core") {}
+project(":core") {
+
+    dependencies{
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:latest.release")
+    }
+}
 
 project(":repositories") {
     apply(plugin = "org.springframework.boot")
@@ -75,6 +81,9 @@ project(":delivery") {
         "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
         "implementation"("com.google.zxing:core:3.4.0")
         "implementation"("com.google.zxing:javase:3.3.0")
+
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:latest.release")
     }
     tasks.getByName<BootJar>("bootJar") {
         enabled = false
