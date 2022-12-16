@@ -10,7 +10,12 @@ $(document).ready(
         setInterval(uptimeMetric, 1000);
     }
 );
+function changeState() {
+  // Get the checkbox
+  var checkBox = document.getElementById("qrcode");
+return checkBox.checked;
 
+}
 function shortUrl(){
     $("#shortener").submit(
         function (event) {
@@ -27,7 +32,22 @@ function shortUrl(){
                         + "'>"
                         + request.getResponseHeader('Location')
                         + "</a></div>"
-                );
+                    );
+                    if(changeState()){
+                        $("#resultQR").html(
+                            "<div class='alert alert-success lead'><a target='_blank' href='"
+                            + request.getResponseHeader('Location')
+                            + "/qrcode"
+                            + "'>"
+                            + request.getResponseHeader('Location')
+                            + "/qrcode"
+                            + "</a></div>"
+                        );
+                    }else{
+                       $("#resultQR").html(
+                           "<div></div>"
+                       );
+                    }
                 },
                 error: function (msg, status, request) {
                     jsonValue = jQuery.parseJSON( msg.responseText );
