@@ -47,7 +47,7 @@ interface UrlShortenerController {
     fun urlTotal(): ResponseEntity<JSONMetricResponse>
     fun cpuUsage(): ResponseEntity<JSONMetricResponse>
     fun uptime(): ResponseEntity<JSONMetricResponse>
-    fun qrcode(@RequestParam url: String): ResponseEntity<ByteArray>
+    fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray>
 }
 
 /**
@@ -242,13 +242,13 @@ class UrlShortenerControllerImpl(
             )
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
-    @GetMapping("/qrcode")
-    override fun qrcode(@RequestParam url: String): ResponseEntity<ByteArray> {
+    @GetMapping("/{id}/qrcode")
+    override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray> {
+        val redirection = redirectUseCase.redirectTo(id)
 
         val qrCodeWriter = QRCodeWriter()
-
         // Generate the QR code
-        val qrCode = qrCodeWriter.encode(url, BarcodeFormat.QR_CODE, 200, 200)
+        val qrCode = qrCodeWriter.encode(redirection.target, BarcodeFormat.QR_CODE, 200, 200)
 
         // Save the QR code as an image file
         val image = MatrixToImageWriter.toBufferedImage(qrCode)
