@@ -11,6 +11,8 @@ import es.unizar.urlshortener.core.UrlNotReachable
 import es.unizar.urlshortener.core.usecases.*
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -168,9 +170,10 @@ class UrlShortenerControllerImpl(
             ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
         }
     @GetMapping("/api/metrics/url")
-    override fun urlTotal(): ResponseEntity<JSONMetricResponse> =
-        let {
-            val h = HttpHeaders()
+    override fun urlTotal(): ResponseEntity<JSONMetricResponse> = runBlocking {
+        var h = HttpHeaders()
+        var response: JSONMetricResponse? = null
+        val job = launch {
             h.contentType = MediaType.APPLICATION_JSON
             val client = HttpClient.newBuilder().build();
             val request = HttpRequest.newBuilder()
@@ -182,19 +185,23 @@ class UrlShortenerControllerImpl(
             val name: String = context.read("name")
             val description: String = context.read("description")
             val measurement: String = context.read<Double>("measurements[0].value").toString()
-            val response = JSONMetricResponse(
+            response = JSONMetricResponse(
                 mapOf(
                     "name" to name,
                     "description" to description,
                     "measurement" to measurement
                 )
             )
-            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
+        job.join()
+        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+    }
+
     @GetMapping("/api/metrics/cpu")
-    override fun cpuUsage(): ResponseEntity<JSONMetricResponse> =
-        let {
-            val h = HttpHeaders()
+    override fun cpuUsage(): ResponseEntity<JSONMetricResponse> = runBlocking {
+        var h = HttpHeaders()
+        var response: JSONMetricResponse? = null
+        val job = launch {
             h.contentType = MediaType.APPLICATION_JSON
             val client = HttpClient.newBuilder().build();
             val request = HttpRequest.newBuilder()
@@ -206,20 +213,24 @@ class UrlShortenerControllerImpl(
             val name: String = context.read("name")
             val description: String = context.read("description")
             val measurement: String = context.read<Double>("measurements[0].value").toString()
-            val response = JSONMetricResponse(
+            response = JSONMetricResponse(
                 mapOf(
                     "name" to name,
                     "description" to description,
                     "measurement" to measurement
                 )
             )
-            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
+        job.join()
+        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+    }
+
 
     @GetMapping("/api/metrics/uptime")
-    override fun uptime(): ResponseEntity<JSONMetricResponse> =
-        let {
-            val h = HttpHeaders()
+    override fun uptime(): ResponseEntity<JSONMetricResponse> = runBlocking {
+        var h = HttpHeaders()
+        var response: JSONMetricResponse? = null
+        val job = launch {
             h.contentType = MediaType.APPLICATION_JSON
             val client = HttpClient.newBuilder().build();
             val request = HttpRequest.newBuilder()
@@ -232,7 +243,7 @@ class UrlShortenerControllerImpl(
             val description: String = context.read("description")
             val measurement: String = context.read<Double>("measurements[0].value").toString()
             val format: String = context.read("baseUnit")
-            val response = JSONMetricResponse(
+            response = JSONMetricResponse(
                 mapOf(
                     "name" to name,
                     "description" to description,
@@ -240,8 +251,10 @@ class UrlShortenerControllerImpl(
                     "format" to format
                 )
             )
-            ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
+        job.join()
+        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+    }
     @GetMapping("/{id}/qrcode")
     override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray> {
         val redirection = redirectUseCase.redirectTo(id)
