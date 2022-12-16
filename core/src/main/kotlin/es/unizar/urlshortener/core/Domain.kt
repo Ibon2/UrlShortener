@@ -1,5 +1,6 @@
 package es.unizar.urlshortener.core
 
+import java.io.ByteArrayOutputStream
 import java.time.OffsetDateTime
 
 /**
@@ -20,7 +21,6 @@ data class ShortUrl(
     val created: OffsetDateTime = OffsetDateTime.now(),
     val properties: ShortUrlProperties = ShortUrlProperties()
 )
-
 /**
  * A [Redirection] specifies the [target] and the [status code][mode] of a redirection.
  * By default, the [status code][mode] is 307 TEMPORARY REDIRECT.
@@ -38,7 +38,8 @@ data class ShortUrlProperties(
     val sponsor: String? = null,
     val safe: Boolean = true,
     val owner: String? = null,
-    val country: String? = null
+    val country: String? = null,
+    val qrcode: Boolean = false
 )
 
 /**

@@ -1,5 +1,6 @@
 package es.unizar.urlshortener.infrastructure.repositories
 
+import java.io.ByteArrayOutputStream
 import java.time.OffsetDateTime
 import javax.persistence.*
 
@@ -31,6 +32,7 @@ class ShortUrlEntity(
     val hash: String,
     val target: String,
     val sponsor: String?,
+    val qrcode: Boolean,
     val created: OffsetDateTime,
     val owner: String?,
     val mode: Int,

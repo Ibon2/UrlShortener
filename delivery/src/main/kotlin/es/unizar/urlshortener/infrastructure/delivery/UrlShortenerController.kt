@@ -47,7 +47,7 @@ interface UrlShortenerController {
     fun urlTotal(): ResponseEntity<JSONMetricResponse>
     fun cpuUsage(): ResponseEntity<JSONMetricResponse>
     fun uptime(): ResponseEntity<JSONMetricResponse>
-    fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray>
+    fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?>
 }
 
 /**
@@ -56,6 +56,7 @@ interface UrlShortenerController {
 data class ShortUrlDataIn(
     val url: String,
     val sponsor: String? = null,
+    val qrcode: String? = null
 )
 
 /**
@@ -113,11 +114,26 @@ class UrlShortenerControllerImpl(
     @PostMapping("/api/link", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     override fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut> =
         try {
+            var qrcodeExists = false
+            if(data.qrcode!=null) {
+                qrcodeExists = true
+                println("No es nulo asi que generamos ByteArray")
+                /*val qrCodeWriter = QRCodeWriter()
+                // Generate the QR code
+                val qrCode = qrCodeWriter.encode(data.url, BarcodeFormat.QR_CODE, 200, 200)
+
+                // Save the QR code as an image file
+                val image = MatrixToImageWriter.toBufferedImage(qrCode)
+                outputStream = ByteArrayOutputStream()
+                ImageIO.write(image, "PNG", outputStream)*/
+                //imageBytes = outputStream.toByteArray()
+            }
             createShortUrlUseCase.create(
                 url = data.url,
                 data = ShortUrlProperties(
                     ip = request.remoteAddr,
-                    sponsor = data.sponsor
+                    sponsor = data.sponsor,
+                    qrcode = qrcodeExists
                 )
             ).let {
                 val h = HttpHeaders()
@@ -243,24 +259,28 @@ class UrlShortenerControllerImpl(
             ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
         }
     @GetMapping("/{id}/qrcode")
-    override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray> {
-        val redirection = redirectUseCase.redirectTo(id)
+    override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?> =
+            redirectUseCase.getShortUrl(id).let {
+                println("En let con it qrcode: "+it.properties.qrcode)
+                if(it.properties.qrcode){
+                    val qrCodeWriter = QRCodeWriter()
+                    // Generate the QR code
+                    val qrCode = qrCodeWriter.encode(it.redirection.target, BarcodeFormat.QR_CODE, 200, 200)
 
-        val qrCodeWriter = QRCodeWriter()
-        // Generate the QR code
-        val qrCode = qrCodeWriter.encode(redirection.target, BarcodeFormat.QR_CODE, 200, 200)
+                    // Save the QR code as an image file
+                    val image = MatrixToImageWriter.toBufferedImage(qrCode)
+                    val outputStream = ByteArrayOutputStream()
+                    ImageIO.write(image, "PNG", outputStream)
+                    val imageBytes = outputStream.toByteArray()
+                    val headers = HttpHeaders()
+                    headers.contentType = MediaType.IMAGE_PNG
+                    //val imageByte = it.toByteArray()
+                    // Return the QR code image in the response
+                    ResponseEntity(imageBytes, headers, HttpStatus.OK)
+                }else{
+                    ResponseEntity(HttpStatus.BAD_REQUEST)
+                }
 
-        // Save the QR code as an image file
-        val image = MatrixToImageWriter.toBufferedImage(qrCode)
-        val outputStream = ByteArrayOutputStream()
-        ImageIO.write(image, "PNG", outputStream)
-        val imageBytes = outputStream.toByteArray()
+        }
 
-        // Set the headers for the response
-        val headers = HttpHeaders()
-        headers.contentType = MediaType.IMAGE_PNG
-
-        // Return the QR code image in the response
-        return ResponseEntity(imageBytes, headers, HttpStatus.OK)
-    }
 }

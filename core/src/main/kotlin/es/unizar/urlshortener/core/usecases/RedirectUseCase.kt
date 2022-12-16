@@ -2,7 +2,9 @@ package es.unizar.urlshortener.core.usecases
 
 import es.unizar.urlshortener.core.Redirection
 import es.unizar.urlshortener.core.RedirectionNotFound
+import es.unizar.urlshortener.core.ShortUrl
 import es.unizar.urlshortener.core.ShortUrlRepositoryService
+import java.io.ByteArrayOutputStream
 
 /**
  * Given a key returns a [Redirection] that contains a [URI target][Redirection.target]
@@ -12,6 +14,7 @@ import es.unizar.urlshortener.core.ShortUrlRepositoryService
  */
 interface RedirectUseCase {
     fun redirectTo(key: String): Redirection
+    fun getShortUrl(key: String): ShortUrl
 }
 
 /**
@@ -24,5 +27,9 @@ class RedirectUseCaseImpl(
         .findByKey(key)
         ?.redirection
         ?: throw RedirectionNotFound(key)
+
+    override fun getShortUrl(key: String)= shortUrlRepository
+            .findByKey(key)
+            ?: throw RedirectionNotFound(key)
 }
 

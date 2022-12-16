@@ -27,15 +27,18 @@ class CreateShortUrlUseCaseImpl(
                 url
             ).let {
                 val id: String = hashService.hasUrl(url)
+
                 val su = ShortUrl(
                     hash = id,
                     redirection = Redirection(target = url),
                     properties = ShortUrlProperties(
                         safe = data.safe,
                         ip = data.ip,
-                        sponsor = data.sponsor
+                        sponsor = data.sponsor,
+                        qrcode = data.qrcode
                     )
                 )
+                println("en create() "+su.properties.qrcode)
                 shortUrlRepository.save(su)
             }
         } else {

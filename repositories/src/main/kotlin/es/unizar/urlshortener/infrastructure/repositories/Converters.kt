@@ -28,7 +28,8 @@ fun Click.toEntity() = ClickEntity(
     referrer = properties.referrer,
     browser = properties.browser,
     platform = properties.platform,
-    country = properties.country
+    country = properties.country,
+
 )
 
 /**
@@ -46,22 +47,26 @@ fun ShortUrlEntity.toDomain() = ShortUrl(
         owner = owner,
         safe = safe,
         ip = ip,
-        country = country
+        country = country,
+        qrcode = qrcode
     )
 )
 
 /**
  * Extension method to convert a domain [ShortUrl] into a [ShortUrlEntity].
  */
-fun ShortUrl.toEntity() = ShortUrlEntity(
-    hash = hash,
-    target = redirection.target,
-    mode = redirection.mode,
-    created = created,
-    owner = properties.owner,
-    sponsor = properties.sponsor,
-    safe = properties.safe,
-    ip = properties.ip,
-    country = properties.country
-)
+fun ShortUrl.toEntity() =let {
+    ShortUrlEntity(
+            hash = hash,
+            target = redirection.target,
+            mode = redirection.mode,
+            created = created,
+            owner = properties.owner,
+            sponsor = properties.sponsor,
+            safe = properties.safe,
+            ip = properties.ip,
+            country = properties.country,
+            qrcode = properties.qrcode
+    )
+}
 
