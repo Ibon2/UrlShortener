@@ -41,8 +41,12 @@ class ApplicationConfiguration(
     fun logClickUseCase() = LogClickUseCaseImpl(clickRepositoryService())
 
     @Bean
+    fun limitRedirectUseCase() = LimitRedirectUseCaseImpl()
+
+    @Bean
     fun createShortUrlUseCase() =
-        CreateShortUrlUseCaseImpl(shortUrlRepositoryService(), validatorService(), hashService(),reachableUrlUseCase())
+        CreateShortUrlUseCaseImpl(shortUrlRepositoryService(), validatorService(), hashService(),reachableUrlUseCase(),
+            limitRedirectUseCase())
     @Bean
     fun reachableUrlUseCase() =
         ReachableUrlUseCaseImpl()

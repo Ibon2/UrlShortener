@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.kapt3.base.Kapt.kapt
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
@@ -37,7 +38,11 @@ subprojects {
     }
     dependencies {
         "implementation"("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+        "implementation"("org.springdoc:springdoc-openapi-data-rest:1.6.0")
+        "implementation"("org.springdoc:springdoc-openapi-ui:1.6.0")
+        "implementation"("org.springdoc:springdoc-openapi-kotlin:1.6.0")
     }
+
 }
 
 project(":core") {
@@ -48,6 +53,7 @@ project(":core") {
 
         "implementation"("io.micrometer:micrometer-core:1.10.2")
         "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
+        "implementation"("com.bucket4j:bucket4j-core:8.1.1")
     }
 }
 
@@ -87,6 +93,7 @@ project(":delivery") {
 
         "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
         "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:latest.release")
+
     }
     tasks.getByName<BootJar>("bootJar") {
         enabled = false
