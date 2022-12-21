@@ -209,26 +209,26 @@ class UrlShortenerControllerImpl(
 
     @GetMapping("/{id}/qrcode")
     override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?> =
-            redirectUseCase.getShortUrl(id).let {
-                println("En let con it qrcode: "+it.properties.qrcode)
-                if(it.properties.qrcode){
-                    val qrCodeWriter = QRCodeWriter()
-                    // Generate the QR code
-                    val qrCode = qrCodeWriter.encode(it.redirection.target, BarcodeFormat.QR_CODE, 200, 200)
+        redirectUseCase.getShortUrl(id).let {
+            println("En let con it qrcode: "+it.properties.qrcode)
+            if(it.properties.qrcode){
+                val qrCodeWriter = QRCodeWriter()
+                // Generate the QR code
+                val qrCode = qrCodeWriter.encode(it.redirection.target, BarcodeFormat.QR_CODE, 200, 200)
 
-                    // Save the QR code as an image file
-                    val image = MatrixToImageWriter.toBufferedImage(qrCode)
-                    val outputStream = ByteArrayOutputStream()
-                    ImageIO.write(image, "PNG", outputStream)
-                    val imageBytes = outputStream.toByteArray()
-                    val headers = HttpHeaders()
-                    headers.contentType = MediaType.IMAGE_PNG
-                    //val imageByte = it.toByteArray()
-                    // Return the QR code image in the response
-                    ResponseEntity(imageBytes, headers, HttpStatus.OK)
-                }else{
-                    ResponseEntity(HttpStatus.BAD_REQUEST)
-                }
+                // Save the QR code as an image file
+                val image = MatrixToImageWriter.toBufferedImage(qrCode)
+                val outputStream = ByteArrayOutputStream()
+                ImageIO.write(image, "PNG", outputStream)
+                val imageBytes = outputStream.toByteArray()
+                val headers = HttpHeaders()
+                headers.contentType = MediaType.IMAGE_PNG
+                //val imageByte = it.toByteArray()
+                // Return the QR code image in the response
+                ResponseEntity(imageBytes, headers, HttpStatus.OK)
+            }else{
+                ResponseEntity(HttpStatus.BAD_REQUEST)
+            }
 
         }
 

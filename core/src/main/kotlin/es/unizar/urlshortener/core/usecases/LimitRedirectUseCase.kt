@@ -17,7 +17,9 @@ interface LimitRedirectUseCase{
     fun consume(hash: String)
 }
 
-class LimitRedirectUseCaseImpl() : LimitRedirectUseCase{
+class LimitRedirectUseCaseImpl(
+
+) : LimitRedirectUseCase{
     private val buckets : ConcurrentHashMap<String, Bucket> = ConcurrentHashMap()
     override fun addLimit(limit: Int, hash: String): Unit = runBlocking {
         GlobalScope.launch {

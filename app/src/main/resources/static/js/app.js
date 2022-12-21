@@ -1,11 +1,11 @@
 $(document).ready(
     function(){
         shortUrl();
-        //infoMetrics();
         urlMetric();
         cpuMetric();
         uptimeMetric();
         setInterval(timeGraphic, 5000);
+        setInterval(urlMetric(), 5000);
         setInterval(cpuMetric, 5000);
         setInterval(uptimeMetric, 1000);
     }

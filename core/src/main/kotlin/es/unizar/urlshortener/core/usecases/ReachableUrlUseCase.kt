@@ -13,7 +13,6 @@ interface ReachableUrlUseCase {
 
 class ReachableUrlUseCaseImpl() :
     ReachableUrlUseCase {
-
         @OptIn(DelicateCoroutinesApi::class)
         override fun isReachable(key: String): Unit = runBlocking {
             GlobalScope.launch {
