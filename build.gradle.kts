@@ -41,10 +41,13 @@ subprojects {
 }
 
 project(":core") {
-
+    apply(plugin = "org.springframework.boot")
     dependencies{
         "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:latest.release")
         "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:latest.release")
+
+        "implementation"("io.micrometer:micrometer-core:1.10.2")
+        "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
     }
 }
 
@@ -111,5 +114,7 @@ project(":app") {
         "testImplementation"("com.fasterxml.jackson.module:jackson-module-kotlin")
         "testImplementation"("org.apache.httpcomponents:httpclient")
 
+        "implementation"("io.micrometer:micrometer-core:1.10.2")
+        "implementation"("io.micrometer:micrometer-registry-prometheus:latest.release")
     }
 }

@@ -1,18 +1,18 @@
 package es.unizar.urlshortener.infrastructure.delivery
 
+import auxiliar.Graphics
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.client.j2se.MatrixToImageWriter
 import com.google.zxing.qrcode.QRCodeWriter
-import com.jayway.jsonpath.JsonPath
 import es.unizar.urlshortener.core.ClickProperties
 import es.unizar.urlshortener.core.InvalidUrlException
 import es.unizar.urlshortener.core.ShortUrlProperties
 import es.unizar.urlshortener.core.UrlNotReachable
 import es.unizar.urlshortener.core.usecases.*
 import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.MeterRegistry
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import io.micrometer.prometheus.PrometheusConfig
+import io.micrometer.prometheus.PrometheusMeterRegistry
+import kotlinx.coroutines.*
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -21,9 +21,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.io.ByteArrayOutputStream
 import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
+import java.util.concurrent.CompletableFuture
 import javax.imageio.ImageIO
 import javax.servlet.http.HttpServletRequest
 
@@ -45,11 +43,9 @@ interface UrlShortenerController {
      * **Note**: Delivery of use case [CreateShortUrlUseCase].
      */
     fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut>
-    fun metrics(): ResponseEntity<InfoMetricsResponse>
-    fun urlTotal(): ResponseEntity<JSONMetricResponse>
-    fun cpuUsage(): ResponseEntity<JSONMetricResponse>
-    fun uptime(): ResponseEntity<JSONMetricResponse>
     fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?>
+
+    fun getDataGraphic(): ResponseEntity<JSONMetricResponse>
 }
 
 /**
@@ -69,18 +65,8 @@ data class ShortUrlDataOut(
     val properties: Map<String, Any> = emptyMap(),
 )
 
-/**
- * Data metrics of the url.
- */
-data class InfoMetricsResponse(
-    val list: Map<String, String>? = null
-)
-
-/**
- * Data metrics of the url.
- */
 data class JSONMetricResponse(
-    val metric: Map<String, String>? = null
+    val metric: Map<String, ArrayList<out Any>>? = null
 )
 
 /**
@@ -93,11 +79,12 @@ class UrlShortenerControllerImpl(
     val redirectUseCase: RedirectUseCase,
     val logClickUseCase: LogClickUseCase,
     val createShortUrlUseCase: CreateShortUrlUseCase,
-    val registry: MeterRegistry,
+    val registry: PrometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
     val urlCounter: Counter = Counter.builder("url")
-                                .description("URLs shortened")
-                                .register(registry)
-) : UrlShortenerController {
+        .description("URLs shortened")
+        .register(registry),
+    val graphic: Graphics = Graphics()
+    ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
         redirectUseCase.redirectTo(id).let {
@@ -116,8 +103,9 @@ class UrlShortenerControllerImpl(
     @PostMapping("/api/link", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     override fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut> =
         try {
+            val currentTimeMillisStart = System.currentTimeMillis()
             var qrcodeExists = false
-            if(data.qrcode!=null) {
+            if (data.qrcode != null) {
                 qrcodeExists = true
                 println("No es nulo asi que generamos ByteArray")
                 /*val qrCodeWriter = QRCodeWriter()
@@ -149,9 +137,11 @@ class UrlShortenerControllerImpl(
                         "safe" to it.properties.safe
                     )
                 )
+                graphic.save((System.currentTimeMillis()-currentTimeMillisStart).toDouble(),
+                                currentTimeMillisStart.toDouble())
                 ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
             }
-        } catch(e: InvalidUrlException){
+        } catch (e: InvalidUrlException) {
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val response = ShortUrlDataOut(
@@ -160,7 +150,7 @@ class UrlShortenerControllerImpl(
                 )
             )
             ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
-        } catch(e: UrlNotReachable){
+        } catch (e: UrlNotReachable) {
             val h = HttpHeaders()
             h.contentType = MediaType.APPLICATION_JSON
             val response = ShortUrlDataOut(
@@ -170,107 +160,33 @@ class UrlShortenerControllerImpl(
             )
             ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
         }
-    @GetMapping("/api/metrics")
-    override fun metrics(): ResponseEntity<InfoMetricsResponse> =
-        let {
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = InfoMetricsResponse(
-                list = mapOf(
-                    "recortadas" to "Nº URLS recortadas",
-                    "cpu" to "Uso de la CPU",
-                    "time" to "Tiempo total de la maquina",
-                    "cuatro" to "info metrica 4"
-                )
-            )
-            ResponseEntity<InfoMetricsResponse>(response, h, HttpStatus.OK)
-        }
-    @GetMapping("/api/metrics/url")
-    override fun urlTotal(): ResponseEntity<JSONMetricResponse> = runBlocking {
-        var h = HttpHeaders()
-        var response: JSONMetricResponse? = null
-        val job = launch {
-            h.contentType = MediaType.APPLICATION_JSON
-            val client = HttpClient.newBuilder().build();
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/actuator/metrics/url"))
-                .build();
-            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-            val context = JsonPath.parse(total.body())
-            val name: String = context.read("name")
-            val description: String = context.read("description")
-            val measurement: String = context.read<Double>("measurements[0].value").toString()
-            response = JSONMetricResponse(
-                mapOf(
-                    "name" to name,
-                    "description" to description,
-                    "measurement" to measurement
+    @OptIn(DelicateCoroutinesApi::class)
+    @GetMapping("/api/graphic")
+    override fun getDataGraphic(): ResponseEntity<JSONMetricResponse> = runBlocking {
+        val deferred = CompletableFuture<JSONMetricResponse>()
+        GlobalScope.launch {
+            val listData  = graphic.getListData()
+            val listLabel = graphic.getListLabel()
+            deferred.complete(
+                JSONMetricResponse(
+                    mapOf(
+                        "newData" to listData,
+                        "newLabel" to listLabel
+                    )
                 )
             )
         }
-        job.join()
-        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
-    }
-
-    @GetMapping("/api/metrics/cpu")
-    override fun cpuUsage(): ResponseEntity<JSONMetricResponse> = runBlocking {
-        var h = HttpHeaders()
-        var response: JSONMetricResponse? = null
-        val job = launch {
-            h.contentType = MediaType.APPLICATION_JSON
-            val client = HttpClient.newBuilder().build();
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/actuator/metrics/process.cpu.usage"))
-                .build();
-            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            val context = JsonPath.parse(total.body())
-            val name: String = context.read("name")
-            val description: String = context.read("description")
-            val measurement: String = context.read<Double>("measurements[0].value").toString()
-            response = JSONMetricResponse(
-                mapOf(
-                    "name" to name,
-                    "description" to description,
-                    "measurement" to measurement
-                )
-            )
+        withContext(Dispatchers.IO) {
+            deferred.thenApply {
+                val h = HttpHeaders()
+                ResponseEntity<JSONMetricResponse>(it, h, HttpStatus.OK)
+            }.get()
         }
-        job.join()
-        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
+
     }
 
 
-    @GetMapping("/api/metrics/uptime")
-    override fun uptime(): ResponseEntity<JSONMetricResponse> = runBlocking {
-        var h = HttpHeaders()
-        var response: JSONMetricResponse? = null
-        val job = launch {
-            h.contentType = MediaType.APPLICATION_JSON
-            val client = HttpClient.newBuilder().build();
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create("http://localhost:8080/actuator/metrics/process.uptime"))
-                .build();
-            val total = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            val context = JsonPath.parse(total.body())
-            val name: String = context.read("name")
-            val description: String = context.read("description")
-            val measurement: String = context.read<Double>("measurements[0].value").toString()
-            val format: String = context.read("baseUnit")
-            response = JSONMetricResponse(
-                mapOf(
-                    "name" to name,
-                    "description" to description,
-                    "measurement" to measurement,
-                    "format" to format
-                )
-            )
-        }
-        job.join()
-        ResponseEntity<JSONMetricResponse>(response, h, HttpStatus.OK)
-    }
     @GetMapping("/{id}/qrcode")
     override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?> =
             redirectUseCase.getShortUrl(id).let {

@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.UnknownHostException
+import java.util.concurrent.CompletableFuture
 
 interface ReachableUrlUseCase {
     fun isReachable(key: String)
@@ -13,22 +14,25 @@ interface ReachableUrlUseCase {
 class ReachableUrlUseCaseImpl() :
     ReachableUrlUseCase {
 
-        override fun isReachable(url: String) = runBlocking {
-            val job = launch {
+        @OptIn(DelicateCoroutinesApi::class)
+        override fun isReachable(key: String): Unit = runBlocking {
+            GlobalScope.launch {
                 try {
                     withTimeout(12000) {
-                        val urlCheck = URL(url)
-                        val connection: HttpURLConnection = urlCheck.openConnection() as HttpURLConnection
+                        val urlCheck = URL(key)
+                        val connection: HttpURLConnection =
+                            withContext(Dispatchers.IO) {
+                                urlCheck.openConnection()
+                            } as HttpURLConnection
                         val status = connection.responseCode
                         if (status != 200) {
                             println("El codigo no deveulve bien :" + status)
-                            throw UrlNotReachable(url) // Si existe el host destino pero no es un OK
+                            throw UrlNotReachable(key) // Si existe el host destino pero no es un OK
                         }
                     }
                 } catch (e: UnknownHostException) { //Si no existe el host destino
-                    throw UrlNotReachable(url)
+                    throw UrlNotReachable(key)
                 }
             }
-            job.join()
         }
     }

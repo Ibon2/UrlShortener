@@ -1,21 +1,22 @@
 $(document).ready(
     function(){
         shortUrl();
-        infoMetrics();
+        //infoMetrics();
         urlMetric();
         cpuMetric();
         uptimeMetric();
-        setInterval(urlMetric, 5000);
+        setInterval(timeGraphic, 5000);
         setInterval(cpuMetric, 5000);
         setInterval(uptimeMetric, 1000);
     }
 );
-function changeState() {
-  // Get the checkbox
-  var checkBox = document.getElementById("qrcode");
-return checkBox.checked;
 
+function changeState() {
+    // Get the checkbox
+    var checkBox = document.getElementById("qrcode");
+    return checkBox.checked;
 }
+
 function shortUrl(){
     $("#shortener").submit(
         function (event) {
@@ -86,7 +87,7 @@ function urlMetric(){
         success: function (msg, status, request) {
             $("#URLtotal").html(
                 "<div class='alert alert-success lead'><a target='_blank' >"
-                + msg.metric.measurement + "</div>"
+                + msg.measurements[0].value + "</div>"
             );
         },
         error: function () {
@@ -99,12 +100,12 @@ function urlMetric(){
 function cpuMetric(){
     $.ajax({
         type: "GET",
-        url: "/api/metrics/cpu",
+        url: "/api/metrics/process.cpu.usage",
         data: $(this).serialize(),
         success: function (msg, status, request) {
             $("#CPUusage").html(
                 "<div class='alert alert-success lead'><a target='_blank' >"
-                + msg.metric.measurement + "</div>"
+                + msg.measurements[0].value.toFixed(8) + "</div>"
             );
         },
         error: function () {
@@ -117,16 +118,40 @@ function cpuMetric(){
 function uptimeMetric(){
     $.ajax({
         type: "GET",
-        url: "/api/metrics/uptime",
+        url: "/api/metrics/process.uptime",
         data: $(this).serialize(),
         success: function (msg, status, request) {
             $("#Uptime").html(
                 "<div class='alert alert-success lead'><a target='_blank' >"
-                + msg.metric.measurement + "</div>"
+                + Math.floor(msg.measurements[0].value / 3600).toString().padStart(2, '0')
+                + ":"
+                + Math.floor(msg.measurements[0].value/60).toString().padStart(2, '0')
+                + ":"
+                + Math.floor(msg.measurements[0].value%60).toString().padStart(2, '0')
+                + "</div>"
             );
         },
         error: function () {
             $("#Uptime").html(
+            "<div class='alert alert-danger lead'>ERROR</div>");
+        }
+    });
+};
+
+function timeGraphic(){
+    $.ajax({
+        type: "GET",
+        url: "/api/graphic",
+        data: $(this).serialize(),
+        success: function (msg, status, request) {
+            console.log(msg)
+            var newData = [70, 15, 30, 2, 50];
+            myChart.data.datasets[0].data = msg.metric.newData;
+            myChart.data.labels = msg.metric.newLabel;
+            myChart.update();
+        },
+        error: function () {
+            $("#graphic").html(
             "<div class='alert alert-danger lead'>ERROR</div>");
         }
     });
