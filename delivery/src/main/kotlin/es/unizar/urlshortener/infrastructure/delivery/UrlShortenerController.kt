@@ -40,7 +40,7 @@ interface UrlShortenerController {
      * **Note**: Delivery of use case [CreateShortUrlUseCase].
      */
     fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut>
-    fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?>
+    fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray>
 
     fun getDataGraphic(): ResponseEntity<JSONMetricResponse>
 }
@@ -82,7 +82,7 @@ class UrlShortenerControllerImpl(
         .description("URLs shortened")
         .register(registry),
     val graphic: Graphics = Graphics(),
-    private val limitRedirectUseCase: LimitRedirectUseCase
+    val limitRedirectUseCase: LimitRedirectUseCase
     ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
@@ -118,15 +118,6 @@ class UrlShortenerControllerImpl(
             if (data.qrcode != null) {
                 qrcodeExists = true
                 println("No es nulo asi que generamos ByteArray")
-                /*val qrCodeWriter = QRCodeWriter()
-                // Generate the QR code
-                val qrCode = qrCodeWriter.encode(data.url, BarcodeFormat.QR_CODE, 200, 200)
-
-                // Save the QR code as an image file
-                val image = MatrixToImageWriter.toBufferedImage(qrCode)
-                outputStream = ByteArrayOutputStream()
-                ImageIO.write(image, "PNG", outputStream)*/
-                //imageBytes = outputStream.toByteArray()
             }
             createShortUrlUseCase.create(
                 url = data.url,
@@ -205,31 +196,34 @@ class UrlShortenerControllerImpl(
         }
 
     }
-
-
     @GetMapping("/{id}/qrcode")
-    override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray?> =
+    override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray> = runBlocking {
         redirectUseCase.getShortUrl(id).let {
-            println("En let con it qrcode: "+it.properties.qrcode)
-            if(it.properties.qrcode){
-                val qrCodeWriter = QRCodeWriter()
-                // Generate the QR code
-                val qrCode = qrCodeWriter.encode(it.redirection.target, BarcodeFormat.QR_CODE, 200, 200)
-
-                // Save the QR code as an image file
-                val image = MatrixToImageWriter.toBufferedImage(qrCode)
-                val outputStream = ByteArrayOutputStream()
-                ImageIO.write(image, "PNG", outputStream)
-                val imageBytes = outputStream.toByteArray()
-                val headers = HttpHeaders()
-                headers.contentType = MediaType.IMAGE_PNG
-                //val imageByte = it.toByteArray()
-                // Return the QR code image in the response
-                ResponseEntity(imageBytes, headers, HttpStatus.OK)
-            }else{
+            println("En let con it qrcode: " + it.properties.qrcode)
+            if (it.properties.qrcode) {
+                val deferred = CompletableFuture<ByteArray>()
+                GlobalScope.launch {
+                    val qrCodeWriter = QRCodeWriter()
+                    // Generate the QR code
+                    val qrCode = qrCodeWriter.encode(it.redirection.target, BarcodeFormat.QR_CODE, 200, 200)
+                    // Save the QR code as an image file
+                    val image = MatrixToImageWriter.toBufferedImage(qrCode)
+                    val outputStream = ByteArrayOutputStream()
+                    ImageIO.write(image, "PNG", outputStream)
+                    deferred.complete(
+                        outputStream.toByteArray()
+                    )
+                }
+                withContext(Dispatchers.IO) {
+                    deferred.thenApply {
+                        val h = HttpHeaders()
+                        h.contentType = MediaType.IMAGE_PNG
+                        ResponseEntity(it, h, HttpStatus.OK)
+                    }.get()
+                }
+            } else {
                 ResponseEntity(HttpStatus.BAD_REQUEST)
             }
-
         }
-
+    }
 }
