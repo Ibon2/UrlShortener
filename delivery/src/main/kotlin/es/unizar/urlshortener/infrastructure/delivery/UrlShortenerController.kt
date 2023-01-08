@@ -85,18 +85,11 @@ class UrlShortenerControllerImpl(
     val limitRedirectUseCase: LimitRedirectUseCase
     ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
-    override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> =
+    override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> = runBlocking {
         redirectUseCase.redirectTo(id).let {
             val h = HttpHeaders()
             h.location = URI.create(it.target)
-
-            //https://gist.github.com/c0rp-aubakirov/a4349cbd187b33138969
-            val getBrowserAndOS = UserAgentInfoImpl()
-            val y = request.getHeader("User-Agent")
-            val browser = getBrowserAndOS.getBrowser(y)
-            val os = getBrowserAndOS.getOS(y)
-            println("El navegador es: " + browser + " y el SO es: " + os)
-
+            getBrowser(request)
             logClickUseCase.logClick(id, ClickProperties(ip = request.remoteAddr))
             try {
                 limitRedirectUseCase.consume(id)
@@ -105,7 +98,26 @@ class UrlShortenerControllerImpl(
                 ResponseEntity<Void>(h, HttpStatus.TOO_MANY_REQUESTS)
             }
         }
+    }
 
+    private fun getBrowser(request: HttpServletRequest) = runBlocking {
+        val deferred = CompletableFuture<Array<String>>()
+        GlobalScope.launch {
+            //https://gist.github.com/c0rp-aubakirov/a4349cbd187b33138969
+            val getBrowserAndOS = UserAgentInfoImpl()
+            val y = request.getHeader("User-Agent")
+            val browser = getBrowserAndOS.getBrowser(y)
+            val os = getBrowserAndOS.getOS(y)
+            deferred.complete(
+                arrayOf(browser, os)
+            )
+        }
+        withContext(Dispatchers.IO) {
+            deferred.thenApply {
+                println("El navegador es: " + it[0] + " y el SO es: " + it[1])
+            }.get()
+        }
+    }
     @PostMapping("/api/link", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
     override fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut> =
         try {
