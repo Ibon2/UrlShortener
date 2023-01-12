@@ -10,6 +10,8 @@ import io.micrometer.core.instrument.Counter
 import io.micrometer.prometheus.PrometheusConfig
 import io.micrometer.prometheus.PrometheusMeterRegistry
 import kotlinx.coroutines.*
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.hateoas.server.mvc.linkTo
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -74,15 +76,16 @@ data class JSONMetricResponse(
  */
 @RestController
 class UrlShortenerControllerImpl(
-    val redirectUseCase: RedirectUseCase,
-    val logClickUseCase: LogClickUseCase,
-    val createShortUrlUseCase: CreateShortUrlUseCase,
-    val registry: PrometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
-    val urlCounter: Counter = Counter.builder("url")
+        val redirectUseCase: RedirectUseCase,
+        val logClickUseCase: LogClickUseCase,
+        val createShortUrlUseCase: CreateShortUrlUseCase,
+        val registry: PrometheusMeterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT),
+        val urlCounter: Counter = Counter.builder("url")
         .description("URLs shortened")
         .register(registry),
-    val graphic: Graphics = Graphics(),
-    val limitRedirectUseCase: LimitRedirectUseCase
+        val graphic: Graphics = Graphics(),
+        val limitRedirectUseCase: LimitRedirectUseCase,
+        val getBrowserAndOS: UserAgentInfoImpl = UserAgentInfoImpl(),
     ) : UrlShortenerController {
     @GetMapping("/{id:(?!api|index).*}")
     override fun redirectTo(@PathVariable id: String, request: HttpServletRequest): ResponseEntity<Void> = runBlocking {
@@ -104,7 +107,6 @@ class UrlShortenerControllerImpl(
         val deferred = CompletableFuture<Array<String>>()
         GlobalScope.launch {
             //https://gist.github.com/c0rp-aubakirov/a4349cbd187b33138969
-            val getBrowserAndOS = UserAgentInfoImpl()
             val y = request.getHeader("User-Agent")
             val browser = getBrowserAndOS.getBrowser(y)
             val os = getBrowserAndOS.getOS(y)
@@ -115,7 +117,7 @@ class UrlShortenerControllerImpl(
         withContext(Dispatchers.IO) {
             deferred.thenApply {
                 println("El navegador es: " + it[0] + " y el SO es: " + it[1])
-            }.get()
+            }
         }
     }
     @PostMapping("/api/link", consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
@@ -127,8 +129,8 @@ class UrlShortenerControllerImpl(
             if(data.limit!! > 0){
                 limit = data.limit
             }
-            if (data.qrcode != null) {
-                qrcodeExists = true
+            if (data.qrcode != null ) {
+                qrcodeExists = data.qrcode == "true"
                 println("No es nulo asi que generamos ByteArray")
             }
             createShortUrlUseCase.create(
@@ -156,32 +158,11 @@ class UrlShortenerControllerImpl(
                 ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.CREATED)
             }
         } catch (e: InvalidUrlException) {
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = ShortUrlDataOut(
-                properties = mapOf(
-                    "error" to e.message.toString()
-                )
-            )
-            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
+            throw InvalidUrlException(e.url)
         } catch (e: UrlNotReachable) {
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = ShortUrlDataOut(
-                properties = mapOf(
-                    "error" to e.message.toString()
-                )
-            )
-            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.BAD_REQUEST)
+            throw RedirectionNotFound(e.url)
         } catch(e: UrlAlreadyExists){
-            val h = HttpHeaders()
-            h.contentType = MediaType.APPLICATION_JSON
-            val response = ShortUrlDataOut(
-                properties = mapOf(
-                    "error" to e.message.toString()
-                )
-            )
-            ResponseEntity<ShortUrlDataOut>(response, h, HttpStatus.GONE)
+            throw UrlAlreadyExists(e.url)
         }
 
     @OptIn(DelicateCoroutinesApi::class)

@@ -2,6 +2,7 @@ package es.unizar.urlshortener.infrastructure.delivery
 
 import es.unizar.urlshortener.core.InvalidUrlException
 import es.unizar.urlshortener.core.RedirectionNotFound
+import es.unizar.urlshortener.core.UrlAlreadyExists
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -18,12 +19,17 @@ class RestResponseEntityExceptionHandler : ResponseEntityExceptionHandler() {
     @ResponseBody
     @ExceptionHandler(value = [InvalidUrlException::class])
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    protected fun invalidUrls(ex: InvalidUrlException) = ErrorMessage(HttpStatus.BAD_REQUEST.value(), ex.message)
+    protected fun invalidUrls(ex: InvalidUrlException) = ErrorMessage(HttpStatus.BAD_REQUEST.value(), "URL no válida")
 
     @ResponseBody
     @ExceptionHandler(value = [RedirectionNotFound::class])
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    protected fun redirectionNotFound(ex: RedirectionNotFound) = ErrorMessage(HttpStatus.NOT_FOUND.value(), ex.message)
+    protected fun redirectionNotFound(ex: RedirectionNotFound) = ErrorMessage(HttpStatus.NOT_FOUND.value(), "Url no accesible")
+
+    @ResponseBody
+    @ExceptionHandler(value = [UrlAlreadyExists::class])
+    @ResponseStatus(HttpStatus.GONE)
+    protected fun urlAlreadyExists(ex: UrlAlreadyExists) = ErrorMessage(HttpStatus.CONFLICT.value(), "Url ya existente la url")
 }
 
 data class ErrorMessage(

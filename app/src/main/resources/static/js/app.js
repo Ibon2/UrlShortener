@@ -26,6 +26,7 @@ function shortUrl(){
                 url: "/api/link",
                 data: $(this).serialize(),
                 success: function (msg, status, request) {
+                console.log("Llega a success")
                     urlMetric();
                     $("#result").html(
                         "<div class='alert alert-success lead'><a target='_blank' href='"
@@ -54,7 +55,7 @@ function shortUrl(){
                     jsonValue = jQuery.parseJSON( msg.responseText );
                     $("#result").html(
                         "<div class='alert alert-danger lead'>"
-                        + jsonValue.properties.error
+                        + jsonValue.message
                         +"</div>");
                 }
             });
