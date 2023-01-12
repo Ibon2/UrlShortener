@@ -124,7 +124,7 @@ class UrlShortenerControllerImpl(
         try {
             val currentTimeMillisStart = System.currentTimeMillis()
             var limit = 0
-            if(data.limit!! > 0){
+            if(data.limit != null && data.limit > 0 ){
                 limit = data.limit
             }
             createShortUrlUseCase.create(

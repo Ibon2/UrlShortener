@@ -33,11 +33,11 @@ class HttpRequestTest {
 
     @BeforeEach
     fun setup() {
-        val httpClient = HttpClientBuilder.create()
+        /*val httpClient = HttpClientBuilder.create()
             .disableRedirectHandling()
             .build()
         (restTemplate.restTemplate.requestFactory as HttpComponentsClientHttpRequestFactory).httpClient = httpClient
-
+        */
         JdbcTestUtils.deleteFromTables(jdbcTemplate, "shorturl", "click")
     }
 
