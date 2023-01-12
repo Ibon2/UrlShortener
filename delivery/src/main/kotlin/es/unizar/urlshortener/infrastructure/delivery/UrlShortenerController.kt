@@ -52,7 +52,6 @@ interface UrlShortenerController {
  */
 data class ShortUrlDataIn(
     val url: String,
-    val sponsor: String? = null,
     val qrcode: String? = null,
     val limit: Int? = null
 )
@@ -96,7 +95,6 @@ class UrlShortenerControllerImpl(
             logClickUseCase.logClick(id, ClickProperties(ip = request.remoteAddr))
             try {
                 limitRedirectUseCase.consume(id)
-                println("it.mode="+it.mode)
                 ResponseEntity<Void>(h, HttpStatus.valueOf(it.mode))
             } catch (e: NoLeftRedirections) {
                 throw NoLeftRedirections(e.url)
@@ -125,24 +123,19 @@ class UrlShortenerControllerImpl(
     override fun shortener(data: ShortUrlDataIn, request: HttpServletRequest): ResponseEntity<ShortUrlDataOut> =
         try {
             val currentTimeMillisStart = System.currentTimeMillis()
-            var qrcodeExists = false
             var limit = 0
             if(data.limit!! > 0){
                 limit = data.limit
-            }
-            if (data.qrcode != null ) {
-                qrcodeExists = data.qrcode == "true"
-                println("No es nulo asi que generamos ByteArray")
             }
             createShortUrlUseCase.create(
                 url = data.url,
                 data = ShortUrlProperties(
                     ip = request.remoteAddr,
-                    sponsor = data.sponsor,
-                    qrcode = qrcodeExists
+                    qrcode = data.qrcode.equals("on")
                 ),
                 limit = limit
             ).let {
+                println(it)
                 val h = HttpHeaders()
                 val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
                 urlCounter.increment()

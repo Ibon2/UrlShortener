@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers.print
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import java.time.OffsetDateTime
 
 @WebMvcTest
 @ContextConfiguration(
@@ -57,16 +58,35 @@ class UrlShortenerControllerTest {
      */
     @Test
     fun `redirectTo returns a redirect when the key exists`() {
-        given(redirectUseCase.redirectTo("key")).willReturn(Redirection("http://example.com/"))
+        given(
+                createShortUrlUseCase.create(
+                        url = "http://example.com/",
+                        data = ShortUrlProperties(
+                                ip = "127.0.0.1",
+                                qrcode = true
+                        ),
+                        limit = 0
+                )
+        ).willReturn(ShortUrl("f684a3c4", Redirection("http://example.com/")))
 
-        //given(getBrowserAndOS.getBrowser(any())).willReturn("Chrome")
-        //given(getBrowserAndOS.getOS(any())).willReturn("Linux")
+        given(redirectUseCase.redirectTo("f684a3c4")
+        ).willReturn( Redirection("http://www.example.com/"))
 
-        mockMvc.perform(get("/{id}", "key"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(redirectedUrl("http://example.com/"))
+        mockMvc.perform(
+            post("/api/link")
+                    .param("url", "http://example.com/")
+                            .param("limit", "0")
+                            .param("qrcode", "on")
+                            .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+            )
+            .andDo(print())
+            .andExpect(status().isCreated)
+            .andExpect(redirectedUrl("http://localhost/f684a3c4"))
+            .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
-        verify(logClickUseCase).logClick("key", ClickProperties(ip = "127.0.0.1"))
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
+        .andExpect(status().isTemporaryRedirect)
+        .andExpect(redirectedUrl("http://www.example.com/"))
     }
 
     /**
@@ -258,6 +278,7 @@ class QRTest {
     @MockBean
     private lateinit var limitRedirectUseCase: LimitRedirectUseCase
 
+
     /**
      * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
      * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
@@ -274,19 +295,18 @@ class QRTest {
                 limit = 0
             )
         ).willReturn(
-            ShortUrl("f684a3c4", Redirection("http://www.example.com/")))
-
+            ShortUrl("f684a3c4", Redirection("http://www.example.com/"), OffsetDateTime.now(),ShortUrlProperties(qrcode = true)))
         given(
             redirectUseCase.getShortUrl("f684a3c4")
         ).willReturn(
-            ShortUrl("f684a3c4", Redirection("http://localhost:8080/f684a3c4/qrcode"))
+            ShortUrl("f684a3c4", Redirection("http://localhost:8080/f684a3c4/qrcode"), OffsetDateTime.now(),ShortUrlProperties(qrcode = true))
         )
 
         mockMvc.perform(
             post("/api/link")
                 .param("url", "http://www.example.com/")
                 .param("limit", "0")
-                .param("qrcode", "true")
+                .param("qrcode", "on")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
         )
             .andDo(print())
@@ -294,7 +314,7 @@ class QRTest {
             .andExpect(redirectedUrl("http://localhost/f684a3c4"))
             .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
-        mockMvc.perform(get("/{hash}/qr", "f684a3c4"))
+        mockMvc.perform(get("/{hash}/qrcode", "f684a3c4"))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.IMAGE_PNG_VALUE))
 
@@ -328,7 +348,7 @@ class QRTest {
             post("/api/link")
                 .param("url", "http://www.example.com/")
                 .param("limit", "0")
-                .param("qrcode", "true")
+                .param("qrcode", "false")
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
         )
             .andDo(print())
@@ -336,7 +356,7 @@ class QRTest {
             .andExpect(redirectedUrl("http://localhost/f684a3c4"))
             .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
-        mockMvc.perform(get("/{hash}/qr", "f684a3c4"))
+        mockMvc.perform(get("/{hash}/qrcode", "f684a3c4"))
             .andExpect(status().isBadRequest)
 
     }
@@ -370,13 +390,44 @@ class GraphicTest {
      */
     @Test
     fun `redirectTo returns metric list`() {
+        given(
+                createShortUrlUseCase.create(
+                        url = "http://example.com/",
+                        data = ShortUrlProperties(
+                                ip = "127.0.0.1",
+                                qrcode = true
+                        ),
+                        limit = 0
+                )
+        ).willReturn(ShortUrl("f684a3c4", Redirection("http://example.com/")))
+
+        given(
+        redirectUseCase.redirectTo("f684a3c4")
+        ).willReturn( Redirection("http://www.example.com/"))
+
         mockMvc.perform(
-            get("/api/graphic")
+        post("/api/link")
+                .param("url", "http://example.com/")
+                        .param("limit", "0")
+                        .param("qrcode", "on")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                )
+                .andDo(print())
+                .andExpect(status().isCreated)
+                .andExpect(redirectedUrl("http://localhost/f684a3c4"))
+                .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
+
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
+        .andExpect(status().isTemporaryRedirect)
+        .andExpect(redirectedUrl("http://www.example.com/"))
+
+        mockMvc.perform(
+        get("/api/graphic")
         )
-            .andDo(print())
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.metric.newData").value("[]"))
-            .andExpect(jsonPath("$.metric.newLabel").value("[]"))
+        .andDo(print())
+        .andExpect(status().isOk)
+        .andExpect(jsonPath("$.metric.newData.[*]").isNotEmpty)
+        .andExpect(jsonPath("$.metric.newLabel.[*]").isNotEmpty)
 
     }
 }

@@ -31,7 +31,6 @@ class ShortUrlEntity(
     @Id
     val hash: String,
     val target: String,
-    val sponsor: String?,
     val qrcode: Boolean,
     val created: OffsetDateTime,
     val owner: String?,

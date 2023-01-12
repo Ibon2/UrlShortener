@@ -43,7 +43,6 @@ fun ShortUrlEntity.toDomain() = ShortUrl(
     ),
     created = created,
     properties = ShortUrlProperties(
-        sponsor = sponsor,
         owner = owner,
         safe = safe,
         ip = ip,
@@ -62,7 +61,6 @@ fun ShortUrl.toEntity() =let {
             mode = redirection.mode,
             created = created,
             owner = properties.owner,
-            sponsor = properties.sponsor,
             safe = properties.safe,
             ip = properties.ip,
             country = properties.country,

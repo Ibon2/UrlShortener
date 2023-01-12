@@ -27,6 +27,7 @@ class CreateShortUrlUseCaseImpl(
             reachableUrlUseCase.isReachable(
                 url
             ).let {
+                println(it)
                 val id: String = hashService.hasUrl(url)
                 shortUrlRepository.findByKey(id).let{
                     if(it != null){ //Existe la url en el repositorio
@@ -38,7 +39,6 @@ class CreateShortUrlUseCaseImpl(
                             properties = ShortUrlProperties(
                                 safe = data.safe,
                                 ip = data.ip,
-                                sponsor = data.sponsor,
                                 qrcode = data.qrcode
                             )
                         )
