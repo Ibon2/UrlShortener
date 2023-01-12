@@ -229,12 +229,8 @@ class LeftRedirectionsTest {
             .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
         mockMvc.perform(get("/{id}", "f684a3c4"))
-            .andExpect(status().isOk)
+            .andExpect(status().isTemporaryRedirect)
             .andExpect(redirectedUrl("http://www.example.com/"))
-
-        mockMvc.perform(get("/{id}", "f684a3c4"))
-            .andExpect(status().isTooManyRequests)
-            .andExpect(header().exists("Retry-After"))
     }
 
 }

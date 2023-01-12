@@ -1,6 +1,7 @@
 package es.unizar.urlshortener.infrastructure.delivery
 
 import es.unizar.urlshortener.core.InvalidUrlException
+import es.unizar.urlshortener.core.NoLeftRedirections
 import es.unizar.urlshortener.core.RedirectionNotFound
 import es.unizar.urlshortener.core.UrlAlreadyExists
 import org.springframework.http.HttpStatus
@@ -28,8 +29,13 @@ class RestResponseEntityExceptionHandler : ResponseEntityExceptionHandler() {
 
     @ResponseBody
     @ExceptionHandler(value = [UrlAlreadyExists::class])
-    @ResponseStatus(HttpStatus.GONE)
+    @ResponseStatus(HttpStatus.CONFLICT)
     protected fun urlAlreadyExists(ex: UrlAlreadyExists) = ErrorMessage(HttpStatus.CONFLICT.value(), "Url ya existente la url")
+
+    @ResponseBody
+    @ExceptionHandler(value = [NoLeftRedirections::class])
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    protected fun noLeftRedirections(ex: NoLeftRedirections) = ErrorMessage(HttpStatus.TOO_MANY_REQUESTS.value(), "Demasiadas peticiones")
 }
 
 data class ErrorMessage(

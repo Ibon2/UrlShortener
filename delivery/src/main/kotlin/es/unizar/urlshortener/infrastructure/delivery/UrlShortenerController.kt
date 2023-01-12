@@ -96,9 +96,10 @@ class UrlShortenerControllerImpl(
             logClickUseCase.logClick(id, ClickProperties(ip = request.remoteAddr))
             try {
                 limitRedirectUseCase.consume(id)
+                println("it.mode="+it.mode)
                 ResponseEntity<Void>(h, HttpStatus.valueOf(it.mode))
             } catch (e: NoLeftRedirections) {
-                ResponseEntity<Void>(h, HttpStatus.TOO_MANY_REQUESTS)
+                throw NoLeftRedirections(e.url)
             }
         }
     }
