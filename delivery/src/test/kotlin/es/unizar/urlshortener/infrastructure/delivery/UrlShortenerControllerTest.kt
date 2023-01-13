@@ -186,6 +186,64 @@ class CreateRedirectionTest {
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.statusCode").value(400))
     }
+    @Test
+    fun `creates returns bad request if url not reachable`() {
+        given(
+            createShortUrlUseCase.create(
+                url = "http://exampleeeee.com/",
+                data = ShortUrlProperties(
+                    ip = "127.0.0.1",
+                    qrcode = false
+                ),
+                limit = 0
+            )
+        ).willAnswer { throw RedirectionNotFound("http://exampleeeee.com/") }
+
+        mockMvc.perform(
+            post("/api/link")
+                .param("url", "http://exampleeeee.com/")
+                .param("limit", "0")
+                .param("qrcode", "false")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+        )
+            .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `creates returns conflict if url already exists`() {
+        given(
+            createShortUrlUseCase.create(
+                url = "http://example.com/",
+                data = ShortUrlProperties(
+                    ip = "127.0.0.1",
+                    qrcode = false
+                ),
+                limit = 0
+            )
+        ).willReturn(ShortUrl("f684a3c4", Redirection("http://example.com/"))
+        ).willAnswer { throw UrlAlreadyExists("http://exampleeeee.com/") }
+
+        mockMvc.perform(
+            post("/api/link")
+                .param("url", "http://example.com/")
+                .param("limit", "0")
+                .param("qrcode", "false")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+        )
+            .andDo(print())
+            .andExpect(status().isCreated)
+            .andExpect(redirectedUrl("http://localhost/f684a3c4"))
+            .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
+
+        mockMvc.perform(
+            post("/api/link")
+                .param("url", "http://example.com/")
+                .param("limit", "0")
+                .param("qrcode", "false")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+        )
+            .andExpect(status().isConflict)
+    }
 
 }
 
@@ -234,7 +292,7 @@ class LeftRedirectionsTest {
             redirectUseCase.redirectTo("f684a3c4")
         ).willReturn(
             Redirection("http://www.example.com/")
-        )
+        ).willAnswer { throw NoLeftRedirections("http://localhost/f684a3c4") }
 
         mockMvc.perform(
             post("/api/link")
@@ -248,9 +306,12 @@ class LeftRedirectionsTest {
             .andExpect(redirectedUrl("http://localhost/f684a3c4"))
             .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
-        mockMvc.perform(get("/{id}", "f684a3c4"))
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
             .andExpect(status().isTemporaryRedirect)
             .andExpect(redirectedUrl("http://www.example.com/"))
+
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
+            .andExpect(status().isGone)
     }
 
 }

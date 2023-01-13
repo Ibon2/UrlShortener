@@ -34,8 +34,8 @@ class RestResponseEntityExceptionHandler : ResponseEntityExceptionHandler() {
 
     @ResponseBody
     @ExceptionHandler(value = [NoLeftRedirections::class])
-    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
-    protected fun noLeftRedirections(ex: NoLeftRedirections) = ErrorMessage(HttpStatus.TOO_MANY_REQUESTS.value(), "Demasiadas peticiones")
+    @ResponseStatus(HttpStatus.GONE)
+    protected fun noLeftRedirections(ex: NoLeftRedirections) = ErrorMessage(HttpStatus.GONE.value(), "Demasiadas peticiones")
 }
 
 data class ErrorMessage(
