@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>URL Shortener</title>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <link href="webjars/bootstrap/3.4.0/css/bootstrap.min.css" rel="stylesheet"
+          type="text/css"/>
+    <script src="webjars/jquery/3.6.1/jquery.min.js" type="text/javascript"></script>
+    <script src="webjars/bootstrap/3.4.0/js/bootstrap.min.js"
+            type="text/javascript"></script>
+    <script src="js/app.js" type="text/javascript">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+</head>
+<body>
+<div class="container-full">
+    <div class="row">
+        <div class="col-lg-12 text-center">
+            <h1>URL Shortener</h1>
+            <p class="lead">A front-end example page for the project</p>
+            <br>
+            <form action="" class="col-lg-12" id="shortener" role="form">
+                <div class="input-group input-group-lg col-sm-offset-4 col-sm-4">
+                    <input class="center-block form-control input-lg" name="url"
+                           placeholder="Enter a URL" title="Enter a URL" type="text">
+                    <input class="center-block form-control input-lg" name="limit"
+                           placeholder="Enter a limit of redirections" min="0" value="0" type="number">
+                    <label>
+                        <input class="form-control input-lg" name="qrcode" id="qrcode" title="QR" type="checkbox">
+                        QR-Code
+                    </label>
+                    <span class="input-group-btn"><button
+                            class="btn btn-lg btn-primary" type="submit">Short me!</button></span>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12 text-center">
+            <div class="col-sm-offset-4 col-sm-4 text-center">
+                <br/>
+                <div id="result"></div>
+                <br/>
+                <div id="resultQR"></div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <br/>
+        <div class="col-6 text-center" >
+            <div id="recortadas"></div>
+        </div>
+        <div class="col-6 text-center" >
+            <div id="URLtotal"></div>
+        </div>
+    </div>
+    <div class="row">
+        <br/>
+        <div class="col-6 text-center" >
+            <div id="cpu"></div>
+        </div>
+        <div class="col-6 text-center" >
+            <div id="CPUusage"></div>
+        </div>
+    </div>
+    <div class="row">
+        <br/>
+        <div class="col-6 text-center" >
+            <div id="time"></div>
+        </div>
+        <div class="col-6 text-center" >
+            <div id="Uptime"></div>
+        </div>
+    </div>
+    <style>
+      #chart-wrapper {
+        width: 800px;
+        height:400px;
+        text-align: center;
+      }
+    </style>
+    <div id="chart-wrapper">
+        <canvas id="myChart"></canvas>
+    </div>
+    <script>
+        var ctx = document.getElementById("myChart").getContext('2d');
+        // Define the data for the chart
+        var data = {
+            labels: [],
+            datasets: [{
+                label: 'Time taken to make the response',
+                data: [],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        };
+        // Create the chart
+        var myChart = new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true
+            }
+        });
+    </script>
+</div>
+</body>
+</html>

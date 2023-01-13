@@ -135,7 +135,6 @@ class UrlShortenerControllerImpl(
                 ),
                 limit = limit
             ).let {
-                println(it)
                 val h = HttpHeaders()
                 val url = linkTo<UrlShortenerControllerImpl> { redirectTo(it.hash, request) }.toUri()
                 urlCounter.increment()
@@ -186,7 +185,6 @@ class UrlShortenerControllerImpl(
     @GetMapping("/{id}/qrcode")
     override fun qrcode(@PathVariable id: String): ResponseEntity<ByteArray> = runBlocking {
         redirectUseCase.getShortUrl(id).let {
-            println("En let con it qrcode: " + it.properties.qrcode)
             if (it.properties.qrcode) {
                 val deferred = CompletableFuture<ByteArray>()
                 GlobalScope.launch {

@@ -1,0 +1,23 @@
+# Spring Datasource
+spring:
+  datasource:
+    url: jdbc:hsqldb:mem:.
+    username: sa
+    password:
+    driverClassName: org.hsqldb.jdbc.JDBCDriver
+  jpa:
+    open-in-view: false
+
+  # Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      base-path: "/api"
+      exposure:
+        include: "prometheus, metrics"
+        exclude: "env,beans"
+  endpoint:
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true

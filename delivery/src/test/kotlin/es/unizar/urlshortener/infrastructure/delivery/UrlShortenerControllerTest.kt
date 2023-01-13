@@ -47,15 +47,6 @@ class UrlShortenerControllerTest {
     @MockBean
     private lateinit var createShortUrlUseCase: CreateShortUrlUseCase
 
-
-    /**
-     * Test falla porque espera un header "User-Agent"
-     * en la línea 108 de UrlShortenerController que no está
-     * y al fallar nunca se completa y el progrma queda boqueado
-     * en la línea 118 de UrlShortenerController
-     *
-     * Este test nunca debería de haber fallado ya que se basa en la lógica original.
-     */
     @Test
     fun `redirectTo returns a redirect when the key exists`() {
         given(
@@ -89,9 +80,7 @@ class UrlShortenerControllerTest {
         .andExpect(redirectedUrl("http://www.example.com/"))
     }
 
-    /**
-     * Este test pasa, pero es de los originales.
-     */
+
     @Test
     fun `redirectTo returns a not found when the key does not exist`() {
         given(redirectUseCase.redirectTo("key"))
@@ -130,10 +119,6 @@ class CreateRedirectionTest {
     private lateinit var limitRedirectUseCase: LimitRedirectUseCase
 
 
-    /**
-     * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
-     * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
-     */
     @Test
     fun `creates returns a basic redirect if it can compute a hash`() {
         given(
@@ -159,10 +144,6 @@ class CreateRedirectionTest {
             .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
     }
 
-    /**
-     * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
-     * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
-     */
     @Test
     fun `creates returns bad request if it can compute a hash`() {
         given(
@@ -270,10 +251,6 @@ class LeftRedirectionsTest {
     @MockBean
     private lateinit var limitRedirectUseCase: LimitRedirectUseCase
 
-    /**
-     * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
-     * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
-     */
     @Test
     fun `redirectTo throws NoLeftRedirections when limit is reached`() {
 
@@ -314,6 +291,47 @@ class LeftRedirectionsTest {
             .andExpect(status().isGone)
     }
 
+    @Test
+    fun `redirectTo returns a redirect when limit is 0`() {
+
+        given(
+            createShortUrlUseCase.create(
+                url = "http://www.example.com/",
+                data = ShortUrlProperties(
+                    ip = "127.0.0.1",
+                    qrcode = false
+                ),
+                limit = 0
+            )
+        ).willReturn(ShortUrl("f684a3c4", Redirection("http://www.example.com/")))
+
+        given(
+            redirectUseCase.redirectTo("f684a3c4")
+        ).willReturn(
+            Redirection("http://www.example.com/")
+        ).willAnswer { Redirection("http://www.example.com/") }
+
+        mockMvc.perform(
+            post("/api/link")
+                .param("url", "http://www.example.com/")
+                .param("limit", "0")
+                .param("qrcode", "false")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+        )
+            .andDo(print())
+            .andExpect(status().isCreated)
+            .andExpect(redirectedUrl("http://localhost/f684a3c4"))
+            .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
+
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(redirectedUrl("http://www.example.com/"))
+
+        mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(redirectedUrl("http://www.example.com/"))
+    }
+
 }
 
 @WebMvcTest
@@ -339,11 +357,6 @@ class QRTest {
     @MockBean
     private lateinit var limitRedirectUseCase: LimitRedirectUseCase
 
-
-    /**
-     * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
-     * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
-     */
     @Test
     fun `redirectTo returns valid qr if it can compute a hash`() {
         given(
@@ -381,10 +394,6 @@ class QRTest {
 
     }
 
-    /**
-     * Test falla al interpretar porque lo que se está pasando a `create` en el `given`
-     * no se corresponde a lo que realmente se le pasa en el UrlShortenerController L134-142.
-     */
     @Test
     fun `redirectTo throws bad request if qr is not selected`() {
         given(
@@ -446,9 +455,6 @@ class GraphicTest {
     @MockBean
     private lateinit var limitRedirectUseCase: LimitRedirectUseCase
 
-    /**
-     * Test falla al interpretar que newData devuelve la cadena "[]" en lugar de una lista vacía (a veces).
-     */
     @Test
     fun `redirectTo returns metric list`() {
         given(
@@ -463,11 +469,11 @@ class GraphicTest {
         ).willReturn(ShortUrl("f684a3c4", Redirection("http://example.com/")))
 
         given(
-        redirectUseCase.redirectTo("f684a3c4")
+            redirectUseCase.redirectTo("f684a3c4")
         ).willReturn( Redirection("http://www.example.com/"))
 
         mockMvc.perform(
-        post("/api/link")
+            post("/api/link")
                 .param("url", "http://example.com/")
                         .param("limit", "0")
                         .param("qrcode", "on")
@@ -479,16 +485,16 @@ class GraphicTest {
                 .andExpect(jsonPath("$.url").value("http://localhost/f684a3c4"))
 
         mockMvc.perform(get("/{id}", "f684a3c4").header("User-Agent", "UrlAgentHeader"))
-        .andExpect(status().isTemporaryRedirect)
-        .andExpect(redirectedUrl("http://www.example.com/"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(redirectedUrl("http://www.example.com/"))
 
         mockMvc.perform(
-        get("/api/graphic")
+            get("/api/graphic")
         )
-        .andDo(print())
-        .andExpect(status().isOk)
-        .andExpect(jsonPath("$.metric.newData.[*]").isNotEmpty)
-        .andExpect(jsonPath("$.metric.newLabel.[*]").isNotEmpty)
+            .andDo(print())
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.metric.newData.[*]").isNotEmpty)
+            .andExpect(jsonPath("$.metric.newLabel.[*]").isNotEmpty)
 
     }
 }
